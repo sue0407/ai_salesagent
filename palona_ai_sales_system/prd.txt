@@ -1,0 +1,223 @@
+# Palona AI Sales System
+
+---
+
+- **Purpose:** A multi-agent AI sales system that automates and enhances the sales process by integrating with a mock HubSpot CRM environment. The system provides intelligent lead research, personalized message generation, and streamlined approval workflows to improve sales efficiency and effectiveness.
+
+- **Communication Flows:**
+    - **Between Agents:**
+        - CRM Sync Agent -> Research Agent: Provides lead and company data for research
+        - Research Agent -> Message Generation Agent: Delivers research findings and insights
+        - Message Generation Agent -> Approval & Action Agent: Sends draft messages for review
+        - Approval & Action Agent -> CRM Sync Agent: Triggers CRM updates after actions
+        - **Example Flow:**
+            - **CRM Sync Agent -> Research Agent:** When new lead data is ingested, triggers research process
+            - **Research Agent -> Message Generation Agent:** After completing research, sends findings for message creation
+            - **Message Generation Agent -> Approval & Action Agent:** Sends draft message for review
+            - **Approval & Action Agent -> CRM Sync Agent:** After approval, triggers CRM updates
+
+    - **Agent to User Communication:** 
+        - Approval & Action Agent provides a web interface (Streamlit/Flask+React) for message review and approval
+        - All agents log their actions and findings in the mock CRM system
+        - Research reports and message drafts are displayed in the UI for review
+
+---
+
+## CRM Sync Agent
+
+### **Role within the Agency**
+
+Responsible for managing and synchronizing data with the mock HubSpot CRM system, including lead profiles, communication history, and deal information. Handles all CRM-related operations, ensures data consistency, and manages error handling and logging.
+
+### Tools
+
+- **LeadProfileIngestionTool:**
+    - **Description**: Reads and manages lead data from the CRM system, ensuring proper formatting and consistency.
+    - **Inputs**:
+        - source_type (str) - Type of data source (JSON, DB, static)
+        - data_path (str) - Path to the data source
+    - **Validation**:
+        - Validates required fields are present
+        - Ensures data format matches expected schema
+    - **Core Functions:** 
+        - Read lead data from specified source
+        - Validate and transform data
+        - Store in mock CRM system
+    - **APIs**: None (local file operations)
+    - **Output**: JSON confirmation of ingestion status
+
+- **CommunicationHistoryTool:**
+    - **Description**: Retrieves comprehensive communication data, including notes, message logs, last contact dates, interaction counts, preferred contact methods, and timezone information. Maintains chronological order and links communications to lead profiles.
+    - **Inputs**:
+        - lead_id (str) - Unique identifier for the lead
+        - source_types (list) - List of sources to fetch from
+    - **Validation**:
+        - Validates lead_id exists
+        - Checks source accessibility
+    - **Core Functions:**
+        - Fetch HubSpot notes
+        - Process uploaded documents
+        - Combine and summarize history
+    - **APIs**: None (local file operations)
+    - **Output**: Combined communication history in JSON format
+
+- **SimilarDealsTool:**
+    - **Description**: Identifies similar past deals based on industry, deal size, and company size, including partial matches. Returns only relevant and high-scoring matches with comprehensive deal information.
+    - **Inputs**:
+        - industry (str) - Target industry
+        - criteria (dict) - Additional matching criteria
+    - **Validation**:
+        - Validates industry exists in database
+        - Ensures criteria format is correct
+    - **Core Functions:**
+        - Search for similar deals
+        - Calculate similarity scores
+        - Return relevant matches
+    - **APIs**: None (local database operations)
+    - **Output**: List of similar deals with similarity scores
+
+- **CRMUpdateTool:**
+    - **Description**: Processes and logs updates to the CRM, including message logging, timestamp updates, follow-up scheduling, and interaction tracking. Maintains data consistency across all operations.
+    - **Inputs**:
+        - lead_id (str) - Lead identifier
+        - update_type (str) - Type of update
+        - data (dict) - Update data
+    - **Validation**:
+        - Validates lead_id exists
+        - Ensures update_type is valid
+    - **Core Functions:**
+        - Log messages
+        - Update lead status
+        - Store summaries
+    - **APIs**: None (local file operations)
+    - **Output**: Confirmation of update status
+
+---
+
+## Research Agent
+
+### **Role within the Agency**
+
+Gathers and synthesizes comprehensive information about companies and prospects using free APIs, web data, and LLMs. Generates research outputs as text files for downstream agents.
+
+### Tools
+
+- **CompanyResearchTool:**
+    - **Description**: Gathers company information from Wikipedia, NewsAPI, Google News RSS, DuckDuckGo, Bing, and company website meta tags. Uses an LLM (Claude or OpenAI) to generate a 500-word summary for sales preparation, broken into key areas.
+    - **Inputs**:
+        - company_name (str) - Company name
+    - **Validation**:
+        - Validates company name
+    - **Core Functions:**
+        - Fetch company data from multiple sources
+        - Generate summary using LLM
+        - Save output as `company_{company_name}.txt`
+    - **APIs**: Wikipedia API, NewsAPI, DuckDuckGo, Bing, company website, Claude/OpenAI
+    - **Output**: 500-word summary saved as text file
+
+- **LinkedInResearchTool:**
+    - **Description**: Gathers prospect information from Google Custom Search, Bing, DuckDuckGo, and Google News RSS. Combines data into a 300-word, resume-style summary. Output saved as `linkedin_{prospect_name}.txt`.
+    - **Inputs**:
+        - linkedin_url (str) - LinkedIn profile URL
+    - **Validation**:
+        - Validates LinkedIn URL
+    - **Core Functions:**
+        - Fetch and combine profile data
+        - Generate summary
+        - Save output as `linkedin_{prospect_name}.txt`
+    - **APIs**: Google Custom Search, Bing, DuckDuckGo, Google News RSS
+    - **Output**: 300-word summary saved as text file
+
+- **CommunicationSummaryTool:**
+    - **Description**: Combines CRM communication history and user-uploaded documents, generating a <300-word summary using an LLM. Output saved as `comm_{lead_id}.txt`.
+    - **Inputs**:
+        - lead_id (str) - Lead identifier
+        - uploaded_document (str, optional) - Text content of uploaded document
+    - **Validation**:
+        - Validates lead_id exists
+    - **Core Functions:**
+        - Read CRM data and uploaded documents
+        - Generate summary using LLM
+        - Save output as `comm_{lead_id}.txt`
+    - **APIs**: Claude/OpenAI
+    - **Output**: <300-word summary saved as text file
+
+- **ReportGenerationTool:**
+    - **Description**: Combines company and prospect research, generating a <500-word sales call preparation guide using Claude or OpenAI. Reads from saved research files and outputs as `report_{company_name}_{prospect_name}.txt`.
+    - **Inputs**:
+        - company_research (dict) - Company research data
+        - linkedin_research (dict) - LinkedIn research data
+        - crm_data (dict) - CRM communication history
+        - uploaded_document (str, optional) - User-uploaded communication document
+    - **Validation**:
+        - Validates all input data
+    - **Core Functions:**
+        - Combine research data
+        - Generate report using LLM
+        - Save output as `report_{company_name}_{prospect_name}.txt`
+    - **APIs**: Claude/OpenAI
+    - **Output**: <500-word guide saved as text file
+
+---
+
+## Message Generation Agent
+
+### **Role within the Agency**
+
+Creates highly personalized and effective sales outreach messages by leveraging research data, CRM information, similar deal examples, and nuanced client segmentation. Ensures messages are context-rich, professional, and brand-aligned.
+
+### Tools
+
+- **MessageDraftingTool:**
+    - **Description**: Generates personalized sales messages using Claude (if available) or OpenAI GPT-4. Incorporates sales prep report, communication summary, similar deals, and CRM segmentation. Ensures subtle, data-driven prioritization and personalization.
+    - **Inputs**:
+        - research_data (dict) - Combined research findings
+        - crm_data (dict) - CRM communication history
+        - lead_data (dict) - Lead profile information
+    - **Validation**:
+        - Validates all input data
+        - Checks API key
+    - **Core Functions:**
+        - Generate and personalize message content
+        - Format output
+    - **APIs**: Claude/OpenAI GPT-4
+    - **Output**: Draft message in text format
+
+---
+
+## Approval & Action Agent
+
+### **Role within the Agency**
+
+Manages the final stages of the sales message workflow, including message display, approval, and action execution. Ensures quality assurance, system integration, and error handling.
+
+### Tools
+
+- **MessageActionTool:**
+    - **Description**: Executes approved message actions, such as sending emails via Gmail API and updating CRM records. Handles approval workflow and logs all actions.
+    - **Inputs**:
+        - message_id (str) - Identifier for the message
+        - action (str) - Action to execute (e.g., send_email)
+        - lead_id (str) - Lead identifier
+    - **Validation**:
+        - Validates action type and required data
+    - **Core Functions:**
+        - Send messages
+        - Update CRM records
+        - Log actions
+    - **APIs**: Gmail API
+    - **Output**: Action execution status
+
+- **MeetingSchedulerTool:**
+    - **Description**: Schedules meetings using Google Calendar API, with timezone support. Triggers after message actions if a meeting is the next step.
+    - **Inputs**:
+        - lead_id (str) - Lead identifier
+        - meeting_details (dict) - Details for the meeting (time, date, etc.)
+    - **Validation**:
+        - Validates meeting details and lead_id
+    - **Core Functions:**
+        - Schedule meetings
+        - Update CRM records
+        - Log scheduling actions
+    - **APIs**: Google Calendar API
+    - **Output**: Meeting scheduling status 

@@ -1,7 +1,7 @@
-# Palona AI Sales System
+# AI Sales System
 
 ## Overview
-Palona AI Sales System is a multi-agent, LLM-powered sales workflow platform designed to automate and enhance the sales process for D2C businesses. It features:
+AI Sales System is a multi-agent, LLM-powered sales workflow platform designed to automate and enhance the sales process for D2C businesses. It features:
 - Multi-step sales workflow (lead selection, research, sales prep, communication summary, email drafting, meeting scheduling)
 - CRM integration and update
 - LLM-powered research, message generation, and action detection
